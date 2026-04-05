@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "img-gen"
+version = "0.1.0"
+description = "Windows GUI reward record image generator"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=10.4.0",
+]
+
+[project.optional-dependencies]
+build = [
+    "pyinstaller>=6.15.0",
+]
+
+[project.scripts]
+img-gen = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
