@@ -51,6 +51,21 @@ uv run pyinstaller --noconfirm --onefile --windowed --name reward-image-generato
 uv run pyinstaller --noconfirm --windowed --name reward-image-generator main.py
 ```
 
+## GitHub 云编译
+
+仓库已经带了 GitHub Actions 工作流 [windows-build.yml](/Users/yml/codes/img_gen/.github/workflows/windows-build.yml)，把代码推送到 GitHub 后会自动触发 Windows 云编译，也可以在 GitHub 的 `Actions` 页面手动点 `Run workflow`。
+
+编译完成后：
+
+- 进入 GitHub 仓库的 `Actions`
+- 打开最新一次 `Windows Build`
+- 在页面底部下载 artifact `reward-image-generator-windows`
+
+artifact 里包含：
+
+- `reward-image-generator.exe`
+- `output/sample.png`
+
 ## 字体说明
 
 程序会优先读取系统里的中文字体：

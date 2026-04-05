@@ -1,0 +1,46 @@
+name: Windows Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --extra build --locked
+
+      - name: Verify syntax
+        run: uv run python -m py_compile main.py
+
+      - name: Build Windows executable
+        run: uv run pyinstaller --noconfirm --clean --onefile --windowed --name reward-image-generator main.py
+
+      - name: Export sample image
+        run: uv run python main.py --export-sample output/sample.png
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reward-image-generator-windows
+          path: |
+            dist/reward-image-generator.exe
+            output/sample.png
+          if-no-files-found: error
+          retention-days: 14
