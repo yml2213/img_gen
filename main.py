@@ -489,7 +489,7 @@ def main() -> None:
     args = parse_args()
     if args.export_sample:
         output = export_sample(args.export_sample)
-        print(f"样例图片已导出: {output}")
+        print(f"Sample image exported: {output}")
         return
 
     run_gui()
