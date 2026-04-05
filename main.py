@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import io
 import platform
 from dataclasses import dataclass
 from pathlib import Path
@@ -60,9 +61,9 @@ def candidate_font_paths() -> list[Path]:
         ]
     elif system == "Darwin":
         candidates = [
+            "/System/Library/Fonts/Hiragino Sans GB.ttc",
             "/System/Library/Fonts/PingFang.ttc",
             "/System/Library/Fonts/STHeiti Light.ttc",
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",
             "/Library/Fonts/Arial Unicode.ttf",
         ]
     else:
@@ -236,6 +237,53 @@ def create_reward_image(record: RewardRecord, size: tuple[int, int] = CANVAS_SIZ
     return image
 
 
+def copy_image_to_clipboard(image: Image.Image) -> tuple[bool, str]:
+    if platform.system() != "Windows":
+        return False, "当前仅支持 Windows 图片剪贴板。"
+
+    try:
+        import ctypes
+
+        CF_DIB = 8
+        GMEM_MOVEABLE = 0x0002
+
+        output = io.BytesIO()
+        image.convert("RGB").save(output, format="BMP")
+        data = output.getvalue()[14:]
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        handle = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
+        if not handle:
+            return False, "申请剪贴板内存失败。"
+
+        pointer = kernel32.GlobalLock(handle)
+        if not pointer:
+            kernel32.GlobalFree(handle)
+            return False, "锁定剪贴板内存失败。"
+
+        ctypes.memmove(pointer, data, len(data))
+        kernel32.GlobalUnlock(handle)
+
+        if not user32.OpenClipboard(None):
+            kernel32.GlobalFree(handle)
+            return False, "打开系统剪贴板失败。"
+
+        try:
+            user32.EmptyClipboard()
+            if not user32.SetClipboardData(CF_DIB, handle):
+                kernel32.GlobalFree(handle)
+                return False, "写入图片到剪贴板失败。"
+            handle = None
+        finally:
+            user32.CloseClipboard()
+
+        return True, "图片已复制到剪贴板，可以直接粘贴。"
+    except Exception as exc:
+        return False, f"复制到剪贴板失败: {exc}"
+
+
 class RewardImageApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -343,6 +391,7 @@ class RewardImageApp:
         ttk.Button(button_row, text="当前时间", command=self.fill_current_time, style="Action.TButton").pack(side="left", padx=8)
         ttk.Button(button_row, text="恢复默认", command=self.reset_form, style="Action.TButton").pack(side="left")
 
+        ttk.Button(left_panel, text="复制到剪贴板", command=self.copy_preview_to_clipboard, style="Action.TButton").pack(fill="x", pady=(8, 0))
         ttk.Button(left_panel, text="保存图片", command=self.save_image, style="Action.TButton").pack(fill="x", pady=(8, 0))
 
         ttk.Label(right_panel, text="图片预览", style="Header.TLabel").pack(anchor="w")
@@ -403,6 +452,14 @@ class RewardImageApp:
 
         self.current_image.save(output_path, format="PNG")
         messagebox.showinfo("保存成功", f"图片已保存到:\n{output_path}")
+
+    def copy_preview_to_clipboard(self) -> None:
+        self.render_preview()
+        success, message = copy_image_to_clipboard(self.current_image)
+        if success:
+            messagebox.showinfo("复制成功", message)
+            return
+        messagebox.showwarning("复制失败", message)
 
 
 def export_sample(output: Path) -> Path:
